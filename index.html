@@ -1,1 +1,183 @@
-<h1>Initial contents</h1>
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8"> 
+  <title>timedtext converter</title>
+  <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.min.css">
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/sprintf/1.1.2/sprintf.min.js"></script>
+  
+  
+  <script type="text/javascript">
+	$(function() {
+	  var timedtext = null;
+	  var srt = "";
+	  var url = null;
+	  var inputfile = $("#fileNameInput");
+	  var fileName = "";
+	  $("#fileNameInput").change(function(evt) {
+	    // alert("file is: " + $("#fileNameInput").val());
+		// $("#output").html("<p>file is: " + $("#fileNameInput").val() + "</p>");
+		var reader = new FileReader();
+		reader.onload = function(evt) {
+		  // alert("done!");
+		  // var data = reader.result;
+		  timedtext = reader.result;
+		  fileName = inputfile[0].files[0].name;
+		  // console.log("file: " + fileName);
+		  // $("#output").html(data);
+		  // convert(data);
+		};
+		reader.readAsText(evt.target.files[0]);
+	  });
+	  
+	  $("#mybutton").click(function () {
+	    // alert("click!");
+		if (timedtext != null) {
+		  convert(timedtext);
+		} else {
+		  alert("No data!");
+		}
+	  });
+
+	  function convert(xmlstr) {
+	    var parser = new DOMParser();
+        var xmlDoc = parser.parseFromString(xmlstr, "text/xml");
+		// $("#output").html("");
+		var a = $("#savefile");
+		var timedtext_elem = xmlDoc.getElementsByTagName("timedtext");
+		if (timedtext_elem.length == 0) {
+		  $("#status").html("timedtext parse error!");
+		  if (url != null) {
+		    url.revokeObjectURL();
+			url = null;
+		  }
+          a.attr("href", "");
+          a.text("output");
+		  return false;
+		}
+		srt = "";
+		$("#status").html("Converting...");
+		handleTimedtext(xmlDoc);
+		$("#status").html("Done");
+		// var elem_p = xmlDoc.getElementsByTagName("p");
+		// var len = elem_p.length;
+		// $("#output").html("done!");
+		var file = new Blob([srt], {type: "application/text"});
+		if (url != null) {
+		  url.revokeObjectURL();
+		}
+		url = URL.createObjectURL(file);
+		a.attr("href", url);
+		a.text(fileName + " converted to SRT");
+		return true;
+	  }
+	  
+	  function handleTimedtext(doc) {
+	    body = doc.getElementsByTagName("body")[0];
+        handleBody(body);
+	  }
+	  
+	  function handleBody(body) {
+	    var ps = body.getElementsByTagName("p");
+		// $("#output").html("found " + ps.length + " p elements");
+		var index = 0;
+		var prevNode = { text: "", time: 0 };
+		for (var i = 0; i < ps.length; i++) {
+		  var n1 = handleP(ps[i]);
+		  if (n1.text == "") {
+		    index++;
+		    display(index, prevnode.time, n1.time, prevnode.text);
+		  } else {
+		    prevnode = n1;
+		  }
+		}
+	  }
+	  
+	  function handleP(p) {
+	    var result = {}
+		var attributes = p.attributes;
+		var key_time = attributes.t.nodeValue;
+		var text = handlePChildren(p.childNodes);
+		result.text = text;
+		result.time = key_time;
+	    // console.log("processing p");
+		return result;
+	  }
+	  
+	  function handlePChildren(nodes) {
+	    var text = "";
+	    for (var i = 0; i < nodes.length; i++) {
+		  // if (nodes[i].
+		  var name = nodes[i].nodeName;
+		  // TODO: check that it's an s node.
+		  text = text + handleS(nodes[i]);
+		  // console.log("in handlePChildren: name=" + name);
+		}
+		return text;
+	  }
+	  
+	  function handleS(node) {
+	    var nodes = node.childNodes;
+		var text = handleSChildren(nodes);
+		// console.log("in handleS");
+		return text;
+	  }
+	  
+	  function handleSChildren(nodes) {
+	    var text = "";
+	    for (var i = 0; i < nodes.length; i++) {
+		  text += nodes[i].nodeValue;
+		}
+		return text;
+	  }
+	  
+	  function display(index, time1, time2, text) {
+	    // console.log("index=" + index + " time1=" + time1 + " time2=" + time2 + "text=" + text);
+		var t1 = formatTime(parseInt(time1));
+		var t2 = formatTime(parseInt(time2));
+		var str = "" + index + "\r\n" +
+		               t1 + " --> " + t2 + "\r\n" +
+					   text + "\r\n\r\n";
+		// $("#output").append(str);
+		srt = srt + str;
+	  }
+	  
+	  function formatTime(t) {
+	    var milliseconds = t % 1000;
+		t = Math.round(t / 1000);
+		var seconds = t % 60;
+		t = Math.round(t / 60);
+		var minutes = t % 60;
+		hours = Math.round(t / 60);
+		var str = sprintf("%02d:%02d:%02d,%03d", hours, minutes, seconds, milliseconds);
+		return str;
+	  }
+	});
+  </script>
+</head>
+<body>
+
+<div class="section values">
+    <div class="container">
+      <div class="row">
+        <h5>timedtext converter</h5>
+	  <div>
+      <div class="row">
+        <input class="six columns" type="file" placeholder="test@mailbox.com" id="fileNameInput">
+	  </div>
+      <div class="row">
+        <button id="mybutton">Convert</button>
+	  </div>
+      <div class="row" id="output">
+		<p><a id="savefile" href="">output</a></p>
+		<p id="status"></p>
+	  </div>
+
+      </div>
+    </div>
+</div>
+
+</body>
+</html>
+
