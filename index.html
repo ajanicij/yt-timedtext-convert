@@ -119,9 +119,11 @@
 	  
 	  function handleS(node) {
 	    var nodes = node.childNodes;
-		var text = handleSChildren(nodes);
-		// console.log("in handleS");
-		return text;
+	    if (nodes.length == 0)
+	      return node.nodeValue;
+            var text = handleSChildren(nodes);
+            // console.log("in handleS");
+            return text;
 	  }
 	  
 	  function handleSChildren(nodes) {
